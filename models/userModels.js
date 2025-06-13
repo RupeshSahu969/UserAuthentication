@@ -18,8 +18,11 @@ const userSchema = new mongoose.Schema({
     type: Number,
     required: true,
   }
-});
+}
+,
+  { timestamps: true }
+);
 
-const User = mongoose.model("User", userSchema);
+const User = mongoose.model("EUser", userSchema);
 
 module.exports = { User };

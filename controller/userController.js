@@ -1,5 +1,11 @@
 const { User } = require("../models/userModels");
-const {hashPassword,comparePassword,JWTToken} = require("../middilware/auth");
+const multer  = require('multer')
+
+const {
+  hashPassword,
+  comparePassword,
+  JWTToken,
+} = require("../middilware/auth");
 
 // GET
 const userGetRoute = async (req, res) => {
@@ -37,45 +43,80 @@ const userPostRoute = async (req, res) => {
   }
 };
 
-const userLogin=async(req,res)=>{
+const updateUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { name, email, phone } = req.body;
 
-try{
-  const {email,password}=req.body;
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (phone) updateData.phone = phone;
 
-if(!email || !password){
-  return res.status(400).json({message:"credentials are required"});
-}
+    const updateUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+    });
 
-const user=await User.findOne({email});
+    res.status(200).json({
+      message: "User updated successfully",
+      updateUser
+    });
+  } catch (err) {
+    console.error("ERROR IN UPDATE /user:", err.message, err.stack);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 
-if(!user){
-  return res.status(401).json({message:"Invalid credentials"});
-}
+const deleteUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
 
-const isMatch=await comparePassword(password,user.password);
-if(!isMatch){
-  return res.status(401).json({message:"Invalid credentials"});
-}
+    const deletedUser = await User.findByIdAndDelete(userId);
+    if (!deletedUser) {
+      return res.status(404).json({ message: "User not found" });
+    } 
 
-const token=await JWTToken(user);
-return res.status(200).json({message:"Login Successful",user:{
-  name:user.name,
-  email:user.email,
-  phone:user.phone,
-  id:user._id,
-  token
-}});
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error("ERROR IN DELETE /user:", err.message, err.stack);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 
+const userLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({ message: "credentials are required" });
+    }
 
+    const user = await User.findOne({ email });
 
-}
-catch(err){
-  console.log(err);
-  return res.status(500).json({message:"Internal Server Error"});
-}
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
+    const isMatch = await comparePassword(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid Password" });
+    }
 
-}
+    const token = await JWTToken(user);
+    return res.status(200).json({
+      message: "Login Successful",
+      user: {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        id: user._id,
+        token,
+      },
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 
-module.exports = { userGetRoute, userPostRoute ,userLogin};
+module.exports = { userGetRoute, userPostRoute, userLogin, updateUser, deleteUser };
